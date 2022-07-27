@@ -19,6 +19,9 @@ type Context struct {
 	Params map[string]string
 	//response info
 	StatusCode int
+
+	handlers []HandlerFunc
+	index    int
 }
 
 func newContext(req *http.Request, rsp http.ResponseWriter) *Context {
@@ -27,7 +30,13 @@ func newContext(req *http.Request, rsp http.ResponseWriter) *Context {
 		Rsp:    rsp,
 		Method: req.Method,
 		Path:   req.URL.Path,
+		index:  -1,
 	}
+}
+
+func (context *Context) Fail(code int, err string) {
+	context.index = len(context.handlers)
+	context.JSON(code, H{"message": err})
 }
 
 func (context *Context) Param(key string) string {
@@ -76,4 +85,10 @@ func (context *Context) HTML(code int, html string) {
 	context.SetHeader("Content-Type", "text/html")
 	context.Status(code)
 	context.Rsp.Write([]byte(html))
+}
+func (context *Context) Next() {
+	context.index++
+	for ; context.index < len(context.handlers); context.index++ {
+		context.handlers[context.index](context)
+	}
 }
