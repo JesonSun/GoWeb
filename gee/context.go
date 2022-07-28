@@ -22,6 +22,8 @@ type Context struct {
 
 	handlers []HandlerFunc
 	index    int
+
+	engine *Engine
 }
 
 func newContext(req *http.Request, rsp http.ResponseWriter) *Context {
@@ -81,11 +83,14 @@ func (context *Context) Data(code int, data []byte) {
 	context.Rsp.Write(data)
 }
 
-func (context *Context) HTML(code int, html string) {
+func (context *Context) HTML(code int, name string, data interface{}) {
 	context.SetHeader("Content-Type", "text/html")
 	context.Status(code)
-	context.Rsp.Write([]byte(html))
+	if err := context.engine.htmlTemplates.ExecuteTemplate(context.Rsp, name, data); err != nil {
+		context.Fail(500, err.Error())
+	}
 }
+
 func (context *Context) Next() {
 	context.index++
 	for ; context.index < len(context.handlers); context.index++ {
